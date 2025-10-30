@@ -6,9 +6,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+
+interface CartItem {
+  id: number;
+  amount: string;
+  price: string;
+  icon: string;
+  color: string;
+  quantity: number;
+}
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const { toast } = useToast();
 
   const packages = [
@@ -63,11 +76,63 @@ const Index = () => {
     { name: 'Криптовалюта', icon: 'Bitcoin' }
   ];
 
-  const handleBuyClick = (amount: string, price: string) => {
+  const handleBuyClick = (pkg: any) => {
+    const existingItem = cart.find(item => item.id === pkg.id);
+    
+    if (existingItem) {
+      setCart(cart.map(item => 
+        item.id === pkg.id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, { ...pkg, quantity: 1 }]);
+    }
+    
     toast({
       title: "Товар добавлен!",
-      description: `${amount} Robux за ${price}₽ добавлено в корзину`,
+      description: `${pkg.amount} Robux за ${pkg.price}₽ добавлено в корзину`,
     });
+  };
+
+  const removeFromCart = (id: number) => {
+    setCart(cart.filter(item => item.id !== id));
+  };
+
+  const updateQuantity = (id: number, change: number) => {
+    setCart(cart.map(item => {
+      if (item.id === id) {
+        const newQuantity = item.quantity + change;
+        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
+      }
+      return item;
+    }).filter(item => item.quantity > 0));
+  };
+
+  const getTotalPrice = () => {
+    return cart.reduce((sum, item) => sum + (parseInt(item.price) * item.quantity), 0);
+  };
+
+  const getTotalRobux = () => {
+    return cart.reduce((sum, item) => sum + (parseInt(item.amount) * item.quantity), 0);
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Корзина пуста",
+        description: "Добавьте товары в корзину",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    toast({
+      title: "Оформление заказа",
+      description: `Всего: ${getTotalRobux()} Robux за ${getTotalPrice()}₽`,
+    });
+    setCart([]);
+    setIsCartOpen(false);
   };
 
   const handleContactSubmit = (e: React.FormEvent) => {
@@ -118,9 +183,121 @@ const Index = () => {
               ))}
             </div>
 
-            <Button className="md:hidden" variant="ghost" size="icon">
-              <Icon name="Menu" className="text-white" />
-            </Button>
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Icon name="ShoppingCart" className="text-white" size={24} />
+                  {cart.length > 0 && (
+                    <Badge className="absolute -top-1 -right-1 bg-primary text-white border-0 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                      {cart.length}
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="bg-[#1A1F2C] border-white/10 text-white w-full sm:max-w-md">
+                <SheetHeader>
+                  <SheetTitle className="text-white flex items-center gap-2">
+                    <Icon name="ShoppingCart" size={24} />
+                    Корзина
+                  </SheetTitle>
+                  <SheetDescription className="text-gray-400">
+                    {cart.length === 0 ? 'Корзина пуста' : `Товаров в корзине: ${cart.length}`}
+                  </SheetDescription>
+                </SheetHeader>
+                
+                <div className="mt-8 space-y-4">
+                  {cart.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Icon name="ShoppingBag" size={64} className="text-gray-600 mb-4" />
+                      <p className="text-gray-400 text-lg mb-2">Корзина пуста</p>
+                      <p className="text-gray-500 text-sm">Добавьте товары из каталога</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                        {cart.map((item) => (
+                          <Card key={item.id} className="bg-card border-white/10">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                  <Icon name={item.icon as any} className="text-white" size={24} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-white">{item.amount} Robux</div>
+                                  <div className="text-primary font-medium">{item.price}₽ × {item.quantity}</div>
+                                  <div className="text-sm text-gray-400 mt-1">
+                                    Итого: {parseInt(item.price) * item.quantity}₽
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      className="h-7 w-7 border-white/10 hover:bg-white/10"
+                                      onClick={() => updateQuantity(item.id, -1)}
+                                    >
+                                      <Icon name="Minus" size={14} />
+                                    </Button>
+                                    <span className="text-white font-medium w-6 text-center">{item.quantity}</span>
+                                    <Button
+                                      size="icon"
+                                      variant="outline"
+                                      className="h-7 w-7 border-white/10 hover:bg-white/10"
+                                      onClick={() => updateQuantity(item.id, 1)}
+                                    >
+                                      <Icon name="Plus" size={14} />
+                                    </Button>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7"
+                                    onClick={() => removeFromCart(item.id)}
+                                  >
+                                    <Icon name="Trash2" size={14} />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      
+                      <Separator className="bg-white/10" />
+                      
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-lg">
+                          <span className="text-gray-400">Всего Robux:</span>
+                          <span className="font-bold text-secondary">{getTotalRobux()}</span>
+                        </div>
+                        <div className="flex justify-between text-xl">
+                          <span className="text-white font-semibold">К оплате:</span>
+                          <span className="font-bold text-primary">{getTotalPrice()}₽</span>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={handleCheckout}
+                        className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-semibold py-6 text-lg"
+                      >
+                        <Icon name="CreditCard" size={20} className="mr-2" />
+                        Оформить заказ
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full border-white/10 hover:bg-white/10"
+                        onClick={() => setCart([])}
+                      >
+                        <Icon name="Trash2" size={18} className="mr-2" />
+                        Очистить корзину
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
@@ -188,7 +365,7 @@ const Index = () => {
                     <div className="text-3xl font-bold text-primary">549₽</div>
                   </div>
                   <Button 
-                    onClick={() => handleBuyClick('800', '549')}
+                    onClick={() => handleBuyClick(packages[1])}
                     className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-semibold py-6 text-lg"
                   >
                     <Icon name="Zap" size={20} className="mr-2" />
@@ -263,7 +440,7 @@ const Index = () => {
                     </div>
                   </div>
                   <Button 
-                    onClick={() => handleBuyClick(pkg.amount, pkg.price)}
+                    onClick={() => handleBuyClick(pkg)}
                     className={`w-full bg-gradient-to-r ${pkg.color} hover:opacity-90 text-white font-semibold`}
                   >
                     <Icon name="ShoppingCart" size={18} className="mr-2" />
