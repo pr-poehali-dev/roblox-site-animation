@@ -8,6 +8,9 @@ import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface CartItem {
   id: number;
@@ -22,6 +25,10 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [robloxUsername, setRobloxUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('card');
   const { toast } = useToast();
 
   const packages = [
@@ -127,12 +134,32 @@ const Index = () => {
       return;
     }
     
+    setIsCheckoutOpen(true);
+  };
+
+  const handleSubmitOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!robloxUsername || !email) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все обязательные поля",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     toast({
-      title: "Оформление заказа",
-      description: `Всего: ${getTotalRobux()} Robux за ${getTotalPrice()}₽`,
+      title: "Заказ оформлен! 🎉",
+      description: `${getTotalRobux()} Robux будут зачислены на аккаунт ${robloxUsername}`,
     });
+    
     setCart([]);
     setIsCartOpen(false);
+    setIsCheckoutOpen(false);
+    setRobloxUsername('');
+    setEmail('');
+    setPaymentMethod('card');
   };
 
   const handleContactSubmit = (e: React.FormEvent) => {
@@ -620,6 +647,132 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+        <DialogContent className="bg-[#1A1F2C] border-white/10 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <Icon name="Package" size={28} className="text-primary" />
+              Оформление заказа
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Заполни данные для получения Robux
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmitOrder} className="space-y-6 mt-4">
+            <div className="space-y-4">
+              <Card className="bg-card border-white/10">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Товаров в заказе:</span>
+                      <span className="text-white font-medium">{cart.length}</span>
+                    </div>
+                    <Separator className="bg-white/10" />
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Robux:</span>
+                      <span className="text-secondary font-bold text-lg">{getTotalRobux()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white font-semibold">К оплате:</span>
+                      <span className="text-primary font-bold text-xl">{getTotalPrice()}₽</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-2">
+                <Label htmlFor="robloxUsername" className="text-white flex items-center gap-2">
+                  <Icon name="User" size={16} />
+                  Никнейм Roblox
+                  <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="robloxUsername"
+                  placeholder="Введи свой никнейм"
+                  value={robloxUsername}
+                  onChange={(e) => setRobloxUsername(e.target.value)}
+                  className="bg-background border-white/10 text-white placeholder:text-gray-500"
+                  required
+                />
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Icon name="Info" size={12} />
+                  Robux будут зачислены на этот аккаунт
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-white flex items-center gap-2">
+                  <Icon name="Mail" size={16} />
+                  Email
+                  <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="example@mail.ru"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-background border-white/10 text-white placeholder:text-gray-500"
+                  required
+                />
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Icon name="Info" size={12} />
+                  Для отправки чека и подтверждения
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-white flex items-center gap-2">
+                  <Icon name="CreditCard" size={16} />
+                  Способ оплаты
+                </Label>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-3 bg-card border border-white/10 rounded-lg p-3 hover:border-primary/50 transition-colors">
+                      <RadioGroupItem value="card" id="card" className="border-white/30" />
+                      <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Icon name="CreditCard" size={20} className="text-primary" />
+                        <span>Банковская карта</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 bg-card border border-white/10 rounded-lg p-3 hover:border-primary/50 transition-colors">
+                      <RadioGroupItem value="sbp" id="sbp" className="border-white/30" />
+                      <Label htmlFor="sbp" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Icon name="Smartphone" size={20} className="text-secondary" />
+                        <span>СБП</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 bg-card border border-white/10 rounded-lg p-3 hover:border-primary/50 transition-colors">
+                      <RadioGroupItem value="crypto" id="crypto" className="border-white/30" />
+                      <Label htmlFor="crypto" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Icon name="Bitcoin" size={20} className="text-primary" />
+                        <span>Криптовалюта</span>
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-semibold py-6 text-lg"
+              >
+                <Icon name="Zap" size={20} className="mr-2" />
+                Оплатить {getTotalPrice()}₽
+              </Button>
+              
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+                <Icon name="Shield" size={16} className="text-green-400" />
+                Безопасная оплата через защищённое соединение
+              </div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
